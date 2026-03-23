@@ -256,7 +256,28 @@
 
         function parseDateTime(dateStr) {
             try {
-                return new Date(dateStr);
+                // Try to parse the date string in various formats
+                let date;
+                
+                // Try DD/MM/YYYY format first
+                const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                if (ddmmyyyyMatch) {
+                    const day = parseInt(ddmmyyyyMatch[1], 10);
+                    const month = parseInt(ddmmyyyyMatch[2], 10) - 1; // JS months are 0-indexed
+                    const year = parseInt(ddmmyyyyMatch[3], 10);
+                    date = new Date(year, month, day);
+                    if (!isNaN(date.getTime())) {
+                        return date;
+                    }
+                }
+                
+                // Try standard date parsing (YYYY-MM-DD, etc.)
+                date = new Date(dateStr);
+                if (!isNaN(date.getTime())) {
+                    return date;
+                }
+                
+                return null;
             } catch (e) {
                 return null;
             }
