@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Sheet Exporter</title>
+    <style>
+        body {
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            font-family: Arial, sans-serif;
+            color: white;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+        }
+        h1 {
+            text-align: center;
+            font-size: 2em;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            margin: 20px auto;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🕒 Time Sheet Exporter</h1>
+        <div class="card">
+            <label for="dateRange">Select Date Range:</label>
+            <input type="date" id="startDate" />
+            <input type="date" id="endDate" />
+            <label for="excelUpload">Upload Your Excel File:</label>
+            <input type="file" id="excelUpload" accept=".xlsx" />
+            <button onclick="processData()">📥 Process Timeclock Data</button>
+        </div>
+    </div>
+    <script>
+        function processData() {
+            // Logic to process timeclock data
+            alert('Processing timeclock data...');
+        }
+    </script>
+</body>
+</html>
