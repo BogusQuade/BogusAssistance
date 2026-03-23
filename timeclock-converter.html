@@ -147,8 +147,8 @@
             const startStr = document.getElementById('startDate').value;
             const endStr = document.getElementById('endDate').value;
 
-            if (!file) return showMsg('Select a file', 'error');
-            if (!startStr || !endStr) return showMsg('Select dates', 'error');
+            if (!file) return showMsg('📄 Select a file', 'error');
+            if (!startStr || !endStr) return showMsg('📅 Select both dates', 'error');
 
             startDate = new Date(startStr);
             endDate = new Date(endStr);
@@ -160,12 +160,22 @@
                     const ws = wb.Sheets[wb.SheetNames[0]];
                     const data = XLSX.utils.sheet_to_json(ws);
 
+                    if (!data || data.length === 0) {
+                        showMsg('❌ No data found in file', 'error');
+                        return;
+                    }
+
                     resultData = processTimeSheetData(data, startDate, endDate);
                     
+                    if (resultData.length === 0) {
+                        showMsg('⚠️ No matching records found in date range', 'error');
+                        return;
+                    }
+
                     document.getElementById('downloadBtn').style.display = 'block';
-                    showMsg('✓ Ready to download!', 'success');
+                    showMsg('✅ Processed! Ready to download.', 'success');
                 } catch (err) {
-                    showMsg('Error: ' + err.message, 'error');
+                    showMsg('❌ Error: ' + err.message, 'error');
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -273,6 +283,16 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'TimeSheet');
             XLSX.writeFile(wb, 'TimeSheet_' + new Date().toISOString().split('T')[0] + '.xlsx');
+            
+            // Reset form after download
+            setTimeout(() => {
+                document.getElementById('fileInput').value = '';
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
+                document.getElementById('downloadBtn').style.display = 'none';
+                document.getElementById('message').style.display = 'none';
+                resultData = null;
+            }, 500);
         }
 
         function showMsg(text, type) {
