@@ -139,14 +139,19 @@
 
     <script>
         let resultData = null;
+        let startDate = null;
+        let endDate = null;
 
         function processFile() {
             const file = document.getElementById('fileInput').files[0];
-            const start = document.getElementById('startDate').value;
-            const end = document.getElementById('endDate').value;
+            const startStr = document.getElementById('startDate').value;
+            const endStr = document.getElementById('endDate').value;
 
             if (!file) return showMsg('Select a file', 'error');
-            if (!start || !end) return showMsg('Select dates', 'error');
+            if (!startStr || !endStr) return showMsg('Select dates', 'error');
+
+            startDate = new Date(startStr);
+            endDate = new Date(endStr);
 
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -155,7 +160,7 @@
                     const ws = wb.Sheets[wb.SheetNames[0]];
                     const data = XLSX.utils.sheet_to_json(ws);
 
-                    resultData = data.filter(row => row['Name'] && row['Date']);
+                    resultData = processTimeSheetData(data, startDate, endDate);
                     
                     document.getElementById('downloadBtn').style.display = 'block';
                     showMsg('✓ Ready to download!', 'success');
@@ -166,11 +171,107 @@
             reader.readAsArrayBuffer(file);
         }
 
+        function processTimeSheetData(rawData, startDate, endDate) {
+            const employeeMap = {};
+
+            // Process each raw entry
+            rawData.forEach(row => {
+                const name = row['Name'];
+                const dateStr = row['Date'];
+                const status = row['Attendance Status'];
+
+                if (!name || !dateStr || !status) return;
+
+                // Parse the datetime
+                const rowDate = parseDateTime(dateStr);
+                if (!rowDate) return;
+
+                // Check if within date range
+                if (rowDate < startDate || rowDate > endDate) return;
+
+                // Format the date as DD/MM/YYYY
+                const dateKey = formatDateKey(rowDate);
+                const timeStr = extractTime(dateStr);
+
+                if (!timeStr) return;
+
+                // Initialize employee data
+                if (!employeeMap[name]) {
+                    employeeMap[name] = {};
+                }
+
+                // Initialize date entry
+                if (!employeeMap[name][dateKey]) {
+                    employeeMap[name][dateKey] = {
+                        clockedIn: null,
+                        clockedOut: null
+                    };
+                }
+
+                // Update clock in/out (earliest for in, latest for out)
+                if (status.toLowerCase().includes('in')) {
+                    if (!employeeMap[name][dateKey].clockedIn || timeStr < employeeMap[name][dateKey].clockedIn) {
+                        employeeMap[name][dateKey].clockedIn = timeStr;
+                    }
+                } else if (status.toLowerCase().includes('out')) {
+                    if (!employeeMap[name][dateKey].clockedOut || timeStr > employeeMap[name][dateKey].clockedOut) {
+                        employeeMap[name][dateKey].clockedOut = timeStr;
+                    }
+                }
+            });
+
+            // Generate output with all dates in range
+            const output = [];
+            const employees = Object.keys(employeeMap).sort();
+
+            employees.forEach(name => {
+                const current = new Date(startDate);
+                while (current <= endDate) {
+                    const dateKey = formatDateKey(current);
+                    const entry = employeeMap[name][dateKey];
+
+                    output.push({
+                        Name: name,
+                        Date: dateKey,
+                        'Clocked In': entry ? (entry.clockedIn || '') : '',
+                        'Clocked Out': entry ? (entry.clockedOut || '') : ''
+                    });
+
+                    current.setDate(current.getDate() + 1);
+                }
+            });
+
+            return output;
+        }
+
+        function parseDateTime(dateStr) {
+            try {
+                return new Date(dateStr);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function extractTime(dateStr) {
+            const match = dateStr.match(/(\d{2}):(\d{2})(?::(\d{2}))?/);
+            if (match) {
+                return match[1] + ':' + match[2];
+            }
+            return null;
+        }
+
+        function formatDateKey(date) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return day + '/' + month + '/' + year;
+        }
+
         function downloadFile() {
             if (!resultData) return;
             const ws = XLSX.utils.json_to_sheet(resultData);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Data');
+            XLSX.utils.book_append_sheet(wb, ws, 'TimeSheet');
             XLSX.writeFile(wb, 'TimeSheet_' + new Date().toISOString().split('T')[0] + '.xlsx');
         }
 
