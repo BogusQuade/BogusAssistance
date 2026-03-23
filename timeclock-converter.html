@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timeclock Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #upload { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Excel Timeclock Data Converter</h1>
+    <input type="file" id="upload" accept=".xlsx, .xls">
+    <label for="dateRange">Select Date Range:</label>
+    <input type="date" id="startDate">
+    <input type="date" id="endDate">
+    <button id="convert">Convert</button>
+    <button id="download" style="display:none;">Download</button>
+    <h2>Output:</h2>
+    <div id="output"></div>
+
+    <script>
+        document.getElementById('convert').addEventListener('click', function() {
+            const file = document.getElementById('upload').files[0];
+            if (!file) {
+                alert('Please upload an Excel file.');
+                return;
+            }
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                const filteredData = jsonData.filter(row => {
+                    const checkInDate = new Date(row['Date/Time']);
+                    return checkInDate >= startDate && checkInDate <= endDate;
+                });
+                displayData(filteredData);
+                prepareDownload(filteredData);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function displayData(data) {
+            const output = document.getElementById('output');
+            output.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            document.getElementById('download').style.display = 'block';
+        }
+
+        function prepareDownload(data) {
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Filtered Data');
+            document.getElementById('download').onclick = function() {
+                XLSX.writeFile(workbook, 'Filtered_Timeclock_Data.xlsx');
+            };
+        }
+    </script>
+</body>
+</html>
