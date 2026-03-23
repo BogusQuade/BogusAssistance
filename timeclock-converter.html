@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Time Sheet Exporter</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <title>Chronos Flow</title>
     <style>
     * {
         margin: 0;
@@ -27,6 +26,7 @@
         max-width: 600px;
         width: 100%;
         padding: 40px;
+        text-align: center;
     }
     .header {
         text-align: center;
@@ -44,27 +44,13 @@
     .subtitle {
         color: #7f8c8d;
         font-size: 14px;
-    }
-    .form-group {
         margin-bottom: 20px;
     }
-    label {
-        display: block;
-        color: #11998e;
-        font-weight: 600;
-        margin-bottom: 8px;
-        font-size: 14px;
-    }
-    input {
-        width: 100%;
-        padding: 12px 15px;
-        border: 2px solid #ecf0f1;
-        border-radius: 8px;
-        font-size: 14px;
-        box-sizing: border-box;
-    }
-    input:hover {
-        border-color: #11998e;
+    .description {
+        color: #555;
+        font-size: 16px;
+        margin-bottom: 30px;
+        line-height: 1.6;
     }
     button {
         width: 100%;
@@ -73,38 +59,19 @@
         color: white;
         border: none;
         border-radius: 8px;
-        font-size: 15px;
+        font-size: 16px;
         font-weight: 600;
         cursor: pointer;
-        margin-top: 20px;
         transition: all 0.3s ease;
     }
     button:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 20px rgba(17, 153, 142, 0.3);
     }
-    #downloadBtn {
-        background: linear-gradient(135deg, #0b5f56 0%, #2ba89f 100%);
-        display: none;
-    }
-    #downloadBtn:hover {
-        box-shadow: 0 10px 20px rgba(11, 95, 86, 0.3);
-    }
-    #message {
+    .footer {
         margin-top: 20px;
-        padding: 15px;
-        border-radius: 8px;
-        display: none;
-        text-align: center;
-        font-weight: bold;
-    }
-    .success {
-        background: #d4edda;
-        color: #155724;
-    }
-    .error {
-        background: #f8d7da;
-        color: #721c24;
+        font-size: 12px;
+        color: #999;
     }
 </style>
 </head>
@@ -112,218 +79,26 @@
     <div class="container">
         <div class="header">
             <div class="icon">⏰</div>
-            <h1>Time Sheet Exporter</h1>
-            <p class="subtitle">Convert your timeclock data</p>
+            <h1>Chronos Flow</h1>
+            <p class="subtitle">Time Sheet Management Made Easy</p>
         </div>
 
-        <div class="form-group">
-            <label>📁 Excel File</label>
-            <input type="file" id="fileInput" accept=".xlsx,.xls" />
+        <p class="description">
+            Convert your timeclock data into perfectly formatted timesheets. 
+            Upload your Excel file, select your date range, and get professional 
+            results in seconds.
+        </p>
+
+        <button onclick="goToChronosFlow()">🚀 Open Chronos Flow</button>
+
+        <div class="footer">
+            <p>Powered by Base44 Technology</p>
         </div>
-
-        <div class="form-group">
-            <label>📅 Start Date</label>
-            <input type="date" id="startDate" />
-        </div>
-
-        <div class="form-group">
-            <label>📅 End Date</label>
-            <input type="date" id="endDate" />
-        </div>
-
-        <button onclick="processFile()">⚙️ Process</button>
-        <button id="downloadBtn" onclick="downloadFile()">📥 Download</button>
-
-        <div id="message"></div>
     </div>
 
     <script>
-        let resultData = null;
-        let startDate = null;
-        let endDate = null;
-
-        function processFile() {
-            const file = document.getElementById('fileInput').files[0];
-            const startStr = document.getElementById('startDate').value;
-            const endStr = document.getElementById('endDate').value;
-
-            if (!file) return showMsg('📄 Select a file', 'error');
-            if (!startStr || !endStr) return showMsg('📅 Select both dates', 'error');
-
-            startDate = new Date(startStr);
-            endDate = new Date(endStr);
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const wb = XLSX.read(e.target.result, { type: 'array' });
-                    const ws = wb.Sheets[wb.SheetNames[0]];
-                    const data = XLSX.utils.sheet_to_json(ws);
-
-                    if (!data || data.length === 0) {
-                        showMsg('❌ No data found in file', 'error');
-                        return;
-                    }
-
-                    resultData = processTimeSheetData(data, startDate, endDate);
-                    
-                    if (resultData.length === 0) {
-                        showMsg('⚠️ No matching records found in date range', 'error');
-                        return;
-                    }
-
-                    document.getElementById('downloadBtn').style.display = 'block';
-                    showMsg('✅ Processed! Ready to download.', 'success');
-                } catch (err) {
-                    showMsg('❌ Error: ' + err.message, 'error');
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function processTimeSheetData(rawData, startDate, endDate) {
-            const employeeMap = {};
-
-            rawData.forEach(row => {
-                const name = row['Name'];
-                const dateStr = row['Date'];
-                const status = row['Attendance Status'];
-
-                if (!name || !dateStr || !status) return;
-
-                const rowDate = parseDateTime(dateStr);
-                if (!rowDate) return;
-
-                if (rowDate < startDate || rowDate > endDate) return;
-
-                const dateKey = formatDateKey(rowDate);
-                const timeStr = extractTime(dateStr);
-
-                if (!timeStr) return;
-
-                if (!employeeMap[name]) {
-                    employeeMap[name] = {};
-                }
-
-                if (!employeeMap[name][dateKey]) {
-                    employeeMap[name][dateKey] = {
-                        clockedIn: null,
-                        clockedOut: null
-                    };
-                }
-
-                if (status.toLowerCase().includes('in')) {
-                    if (!employeeMap[name][dateKey].clockedIn || timeStr < employeeMap[name][dateKey].clockedIn) {
-                        employeeMap[name][dateKey].clockedIn = timeStr;
-                    }
-                } else if (status.toLowerCase().includes('out')) {
-                    if (!employeeMap[name][dateKey].clockedOut || timeStr > employeeMap[name][dateKey].clockedOut) {
-                        employeeMap[name][dateKey].clockedOut = timeStr;
-                    }
-                }
-            });
-
-            const output = [];
-            const employees = Object.keys(employeeMap).sort();
-
-            employees.forEach(name => {
-                const current = new Date(startDate);
-                while (current <= endDate) {
-                    const dateKey = formatDateKey(current);
-                    const entry = employeeMap[name][dateKey];
-
-                    output.push({
-                        Name: name,
-                        Date: dateKey,
-                        'Clocked In': entry ? (entry.clockedIn || '') : '',
-                        'Clocked Out': entry ? (entry.clockedOut || '') : ''
-                    });
-
-                    current.setDate(current.getDate() + 1);
-                }
-            });
-
-            return output;
-        }
-
-        function parseDateTime(dateStr) {
-            try {
-                // Extract just the date part before the time (handles "2026/02/26 06:34")
-                const dateOnly = dateStr.split(' ')[0];
-                
-                // Try DD/MM/YYYY or YYYY/MM/DD format
-                const ddmmyyyyMatch = dateOnly.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-                if (ddmmyyyyMatch) {
-                    const day = parseInt(ddmmyyyyMatch[1], 10);
-                    const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
-                    const year = parseInt(ddmmyyyyMatch[3], 10);
-                    const date = new Date(year, month, day);
-                    if (!isNaN(date.getTime())) {
-                        return date;
-                    }
-                }
-
-                // Try YYYY/MM/DD format
-                const yyyymmddMatch = dateOnly.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
-                if (yyyymmddMatch) {
-                    const year = parseInt(yyyymmddMatch[1], 10);
-                    const month = parseInt(yyyymmddMatch[2], 10) - 1;
-                    const day = parseInt(yyyymmddMatch[3], 10);
-                    const date = new Date(year, month, day);
-                    if (!isNaN(date.getTime())) {
-                        return date;
-                    }
-                }
-                
-                // Fallback to standard parsing
-                const date = new Date(dateStr);
-                if (!isNaN(date.getTime())) {
-                    return date;
-                }
-                
-                return null;
-            } catch (e) {
-                return null;
-            }
-        }
-
-        function extractTime(dateStr) {
-            const match = dateStr.match(/(\d{2}):(\d{2})/);
-            if (match) {
-                return match[1] + ':' + match[2];
-            }
-            return null;
-        }
-
-        function formatDateKey(date) {
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            return day + '/' + month + '/' + year;
-        }
-
-        function downloadFile() {
-            if (!resultData) return;
-            const ws = XLSX.utils.json_to_sheet(resultData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'TimeSheet');
-            XLSX.writeFile(wb, 'TimeSheet_' + new Date().toISOString().split('T')[0] + '.xlsx');
-            
-            setTimeout(() => {
-                document.getElementById('fileInput').value = '';
-                document.getElementById('startDate').value = '';
-                document.getElementById('endDate').value = '';
-                document.getElementById('downloadBtn').style.display = 'none';
-                document.getElementById('message').style.display = 'none';
-                resultData = null;
-            }, 500);
-        }
-
-        function showMsg(text, type) {
-            const msg = document.getElementById('message');
-            msg.textContent = text;
-            msg.className = type;
-            msg.style.display = 'block';
+        function goToChronosFlow() {
+            window.location.href = 'https://bogustimesheethelper.base44.app';
         }
     </script>
 </body>
