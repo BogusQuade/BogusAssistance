@@ -184,7 +184,6 @@
         function processTimeSheetData(rawData, startDate, endDate) {
             const employeeMap = {};
 
-            // Process each raw entry
             rawData.forEach(row => {
                 const name = row['Name'];
                 const dateStr = row['Date'];
@@ -192,25 +191,20 @@
 
                 if (!name || !dateStr || !status) return;
 
-                // Parse the datetime
                 const rowDate = parseDateTime(dateStr);
                 if (!rowDate) return;
 
-                // Check if within date range
                 if (rowDate < startDate || rowDate > endDate) return;
 
-                // Format the date as DD/MM/YYYY
                 const dateKey = formatDateKey(rowDate);
                 const timeStr = extractTime(dateStr);
 
                 if (!timeStr) return;
 
-                // Initialize employee data
                 if (!employeeMap[name]) {
                     employeeMap[name] = {};
                 }
 
-                // Initialize date entry
                 if (!employeeMap[name][dateKey]) {
                     employeeMap[name][dateKey] = {
                         clockedIn: null,
@@ -218,7 +212,6 @@
                     };
                 }
 
-                // Update clock in/out (earliest for in, latest for out)
                 if (status.toLowerCase().includes('in')) {
                     if (!employeeMap[name][dateKey].clockedIn || timeStr < employeeMap[name][dateKey].clockedIn) {
                         employeeMap[name][dateKey].clockedIn = timeStr;
@@ -230,7 +223,6 @@
                 }
             });
 
-            // Generate output with all dates in range
             const output = [];
             const employees = Object.keys(employeeMap).sort();
 
@@ -256,23 +248,35 @@
 
         function parseDateTime(dateStr) {
             try {
-                // Try to parse the date string in various formats
-                let date;
+                // Extract just the date part before the time (handles "2026/02/26 06:34")
+                const dateOnly = dateStr.split(' ')[0];
                 
-                // Try DD/MM/YYYY format first
-                const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                // Try DD/MM/YYYY or YYYY/MM/DD format
+                const ddmmyyyyMatch = dateOnly.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
                 if (ddmmyyyyMatch) {
                     const day = parseInt(ddmmyyyyMatch[1], 10);
-                    const month = parseInt(ddmmyyyyMatch[2], 10) - 1; // JS months are 0-indexed
+                    const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
                     const year = parseInt(ddmmyyyyMatch[3], 10);
-                    date = new Date(year, month, day);
+                    const date = new Date(year, month, day);
+                    if (!isNaN(date.getTime())) {
+                        return date;
+                    }
+                }
+
+                // Try YYYY/MM/DD format
+                const yyyymmddMatch = dateOnly.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+                if (yyyymmddMatch) {
+                    const year = parseInt(yyyymmddMatch[1], 10);
+                    const month = parseInt(yyyymmddMatch[2], 10) - 1;
+                    const day = parseInt(yyyymmddMatch[3], 10);
+                    const date = new Date(year, month, day);
                     if (!isNaN(date.getTime())) {
                         return date;
                     }
                 }
                 
-                // Try standard date parsing (YYYY-MM-DD, etc.)
-                date = new Date(dateStr);
+                // Fallback to standard parsing
+                const date = new Date(dateStr);
                 if (!isNaN(date.getTime())) {
                     return date;
                 }
@@ -284,7 +288,7 @@
         }
 
         function extractTime(dateStr) {
-            const match = dateStr.match(/(\d{2}):(\d{2})(?::(\d{2}))?/);
+            const match = dateStr.match(/(\d{2}):(\d{2})/);
             if (match) {
                 return match[1] + ':' + match[2];
             }
@@ -305,7 +309,6 @@
             XLSX.utils.book_append_sheet(wb, ws, 'TimeSheet');
             XLSX.writeFile(wb, 'TimeSheet_' + new Date().toISOString().split('T')[0] + '.xlsx');
             
-            // Reset form after download
             setTimeout(() => {
                 document.getElementById('fileInput').value = '';
                 document.getElementById('startDate').value = '';
